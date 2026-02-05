@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>API Test</title>
+</head>
+
+<body>
+    <h1>Testing Soil and Crop APIs</h1>
+    <button onclick="testSoils()">Test /api/soils</button>
+    <button onclick="testCrops()">Test /api/crops</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testSoils() {
+            try {
+                const response = await fetch('http://127.0.0.1:8001/api/soils');
+                const data = await response.json();
+                document.getElementById('output').textContent =
+                    'SOILS RESPONSE:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent =
+                    'SOILS ERROR: ' + error.message;
+            }
+        }
+
+        async function testCrops() {
+            try {
+                const response = await fetch('http://127.0.0.1:8001/api/crops');
+                const data = await response.json();
+                document.getElementById('output').textContent =
+                    'CROPS RESPONSE:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent =
+                    'CROPS ERROR: ' + error.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
