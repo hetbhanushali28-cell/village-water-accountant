@@ -75,3 +75,38 @@ export const getWaterBalance = async (query = null, lat = null, lng = null, soil
         throw error;
     }
 };
+
+export const fetchSoilConditions = async (lat, lng) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/soil-conditions?lat=${lat}&lng=${lng}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching soil conditions:", error);
+        return { success: false, message: "Server Error" };
+    }
+};
+
+export const fetchMarketPrices = async (commodity) => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/api/market-prices?commodity=${commodity}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching market prices:", error);
+        return { success: false, message: "Server Error" };
+    }
+};
+
+export const simulateWaterDepletion = async (cropName, currentBalance) => {
+    try {
+        const monthStart = new Date().getMonth() + 1;
+        const response = await axios.post(`${API_BASE_URL}/api/simulate-water`, {
+            crop_name: cropName,
+            water_balance: currentBalance,
+            month_start: monthStart
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error simulating water:", error);
+        return { simulation: [] };
+    }
+};
