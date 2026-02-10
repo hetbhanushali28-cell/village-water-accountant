@@ -1117,16 +1117,601 @@ html {
   color: #2e7d32;
 }
 
-from {
-  transform: translateY(20px);
-  opacity: 0;
+/* ROI Column Styles (Before/After Comparison) */
+.roi-column {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  flex: 1;
+  min-width: 200px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-to {
-  transform: translateY(0);
-  opacity: 1;
+.roi-column.before {
+  border: 2px solid #ffcdd2;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffebee 100%);
 }
+
+.roi-column.after {
+  border: 2px solid #c8e6c9;
+  background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e9 100%);
 }
+
+.roi-column.after.active {
+  border-color: #4caf50;
+  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.3);
+  transform: scale(1.02);
+}
+
+.roi-column.after.dimmed {
+  opacity: 0.5;
+  filter: grayscale(50%);
+}
+
+.roi-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.roi-column.before .roi-label {
+  color: #c62828;
+}
+
+.roi-column.after .roi-label {
+  color: #2e7d32;
+}
+
+/* ========== Water Savings Bank Account (Phase 11) ========== */
+.savings-bank-card {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 50%, #90caf9 100%);
+  border-radius: 20px;
+  padding: 2rem;
+  margin: 1.5rem 0;
+  border: 2px solid #42a5f5;
+  box-shadow: 0 8px 32px rgba(33, 150, 243, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.savings-bank-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.savings-hero {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.savings-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.savings-number {
+  font-size: 3rem;
+  font-weight: 900;
+  color: #0277bd;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+  line-height: 1;
+}
+
+.savings-unit {
+  font-size: 1.2rem;
+  color: #01579b;
+  font-weight: 600;
+}
+
+.savings-context {
+  color: #546e7a;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.tangible-conversions {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.conversion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.conversion-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%);
+  border-radius: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.conversion-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.conv-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.conv-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #0277bd;
+  line-height: 1.2;
+}
+
+.conv-label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+}
+
+.lifetime-tracker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.lifetime-total {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lifetime-total span {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.lifetime-total strong {
+  font-size: 1.4rem;
+  color: #ff6f00;
+}
+
+.claim-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+  color: white;
+  border: none;
+  padding: 0.8rem 2rem;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.claim-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+/* Certificate Modal */
+.certificate-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+.certificate {
+  background: linear-gradient(135deg, #fffde7 0%, #fff9c4 50%, #fff59d 100%);
+  border-radius: 24px;
+  padding: 2.5rem;
+  max-width: 450px;
+  width: 90%;
+  text-align: center;
+  border: 4px solid #ffd54f;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s ease;
+}
+
+.cert-header {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #f57f17;
+  margin-bottom: 1.5rem;
+}
+
+.cert-body p {
+  color: #5d4037;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.cert-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.cert-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #0277bd;
+  line-height: 1.2;
+}
+
+.cert-stat span:last-child {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.cert-stat.lifetime .cert-value {
+  color: #ff6f00;
+}
+
+.cert-divider {
+  font-size: 1.5rem;
+  margin: 1rem 0;
+}
+
+.cert-close {
+  background: linear-gradient(135deg, #ff7043 0%, #e64a19 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+}
+
+.cert-close:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 600px) {
+  .conversion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .savings-number {
+    font-size: 2rem;
+  }
+
+  .lifetime-tracker {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ========== Weather-Smart Sowing Window (Phase 12) ========== */
+.sowing-window-card {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%);
+  border-radius: 20px;
+  padding: 2rem;
+  margin: 1.5rem 0;
+  border: 2px solid #66bb6a;
+  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.2);
+}
+
+/* Rain Alert Banner */
+.rain-alert-banner {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border: 2px solid #ff9800;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  color: #e65100;
+  font-weight: 600;
+  animation: pulse 2s infinite;
+}
+
+.alert-action {
+  background: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #f57c00;
+}
+
+/* Countdown Timer */
+.sowing-countdown {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.countdown-label {
+  font-size: 1rem;
+  color: #558b2f;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.countdown-timer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  min-width: 70px;
+}
+
+.countdown-value {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: white;
+  line-height: 1;
+}
+
+.countdown-text {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+.countdown-separator {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.window-date {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  color: #33691e;
+}
+
+/* Sowing Reasons */
+.sowing-reasons {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.sowing-reasons h4 {
+  color: #2e7d32;
+  margin-bottom: 0.75rem;
+}
+
+.sowing-reasons ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.sowing-reasons li {
+  padding: 0.5rem 0;
+  color: #444;
+  border-bottom: 1px solid #eee;
+}
+
+.sowing-reasons li:last-child {
+  border-bottom: none;
+}
+
+.prep-reminder {
+  background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: #f57f17;
+}
+
+/* SMS Alert Section */
+.sms-alert-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.sms-alert-section h4 {
+  color: #1565c0;
+  margin-bottom: 1rem;
+}
+
+.sms-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.phone-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.phone-input:focus {
+  outline: none;
+  border-color: #1565c0;
+}
+
+.sms-subscribe-btn {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sms-subscribe-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+}
+
+.sms-subscribe-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sms-enabled {
+  text-align: center;
+  color: #2e7d32;
+  font-size: 1.1rem;
+}
+
+.alert-types {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.alert-tag {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Care Tips Section */
+.care-tips-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.care-tips-section h4 {
+  color: #7b1fa2;
+  margin-bottom: 1rem;
+}
+
+.care-tips-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.care-tip-item {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.care-tip-item:hover {
+  transform: translateY(-3px);
+}
+
+.tip-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.tip-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.tip-day span:last-child {
+  font-weight: 700;
+  color: #7b1fa2;
+}
+
+.tip-text {
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.4;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@media (max-width: 600px) {
+  .countdown-timer {
+    flex-wrap: wrap;
+  }
+
+  .countdown-unit {
+    min-width: 60px;
+    padding: 0.75rem 1rem;
+  }
+
+  .countdown-value {
+    font-size: 1.8rem;
+  }
+
+  .care-tips-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sms-form {
+    flex-direction: column;
+  }
+}
+
 
 /* ========== Soil Dashboard ========== */
 .soil-dashboard {
@@ -1298,5 +1883,101 @@ to {
 @media (max-width: 600px) {
   .price-cards {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ========== Authentication (Phase 14) ========== */
+.auth-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.auth-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.auth-btn.login {
+  background: white;
+  color: #1565c0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.auth-btn.login:hover {
+  background: #f5f5f5;
+  transform: translateY(-1px);
+}
+
+.auth-btn.logout {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.auth-btn.logout:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-email {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.auth-modal {
+  padding: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  width: auto !important;
+  max-width: 95% !important;
+}
+
+.auth-modal .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #eee;
+  color: #333;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-modal .close-btn:hover {
+  background: #e0e0e0;
+}
+
+@media (max-width: 600px) {
+  .auth-header-actions {
+    width: 100%;
+    margin-top: 1rem;
+    justify-content: center;
+  }
+
+  .user-profile {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 }

@@ -1,7 +1,8 @@
-
 import { useState, useEffect } from 'react'
 import { getWaterBalance, fetchSuggestions, checkCropViability, fetchCrops, fetchSoils, fetchSoilConditions, fetchMarketPrices, simulateWaterDepletion } from './api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { supabase } from './supabaseClient';
+import Auth from './Auth';
 import './App.css'
 
 // --- CROP SWAP CARD COMPONENT (DYNAMIC) ---
@@ -97,9 +98,360 @@ const CropSwapCard = ({ recommendedCrop, allRecommendations }) => {
   )
 }
 
+// --- WATER SAVINGS BANK ACCOUNT (Phase 11) ---
+const WaterSavingsCard = ({ recommendedCrop, landAcres = 1 }) => {
+  const [lifetimeSavings, setLifetimeSavings] = useState(0);
+  const [showCertificate, setShowCertificate] = useState(false);
+
+  // Load lifetime savings from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('waterSavingsTotal');
+    if (saved) setLifetimeSavings(parseInt(saved));
+  }, []);
+
+  if (!recommendedCrop) return null;
+
+  // Calculate water saved (baseline: Sugarcane @ 2000mm)
+  const SUGARCANE_BASELINE = 2000; // mm per acre
+  const cropWater = parseInt(recommendedCrop.water_req?.replace('mm', '')) || 500;
+  const waterSavedMM = SUGARCANE_BASELINE - cropWater;
+
+  // Convert mm to liters (1mm on 1 acre = 4046 liters)
+  const litersSaved = waterSavedMM * 4046 * landAcres;
+  const litersSavedFormatted = litersSaved.toLocaleString('en-IN');
+
+  // Tangible conversions
+  const DRINKING_WATER_PER_DAY = 100; // liters/day for a family
+  const POND_CAPACITY = 300000; // liters (typical farm pond)
+  const WATER_PER_EXTRA_ACRE = 4046 * 500; // liters for a low-water crop
+
+  const drinkingDays = Math.round(litersSaved / DRINKING_WATER_PER_DAY);
+  const pondFills = (litersSaved / POND_CAPACITY).toFixed(1);
+  const extraAcres = (litersSaved / WATER_PER_EXTRA_ACRE).toFixed(1);
+
+  // Add to lifetime savings
+  const addToLifetime = () => {
+    const newTotal = lifetimeSavings + litersSaved;
+    setLifetimeSavings(newTotal);
+    localStorage.setItem('waterSavingsTotal', newTotal.toString());
+    setShowCertificate(true);
+  };
+
+  if (waterSavedMM <= 0) return null; // Don't show if crop uses more water
+
+  return (
+    <div className="savings-bank-card">
+      <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: '#0277bd' }}>
+        🏦 Water Savings Bank Account
+      </h3>
+
+      <div className="savings-hero">
+        <div className="savings-amount">
+          <span className="savings-number">{litersSavedFormatted}</span>
+          <span className="savings-unit">Liters Saved</span>
+        </div>
+        <div className="savings-context">
+          vs growing Sugarcane on {landAcres} acre{landAcres > 1 ? 's' : ''}
+        </div>
+      </div>
+
+      <div className="tangible-conversions">
+        <h4 style={{ textAlign: 'center', color: '#555', marginBottom: '1rem' }}>
+          💡 What This Means For You:
+        </h4>
+        <div className="conversion-grid">
+          <div className="conversion-item">
+            <span className="conv-icon">👨‍👩‍👧‍👦</span>
+            <span className="conv-value">{drinkingDays.toLocaleString('en-IN')}</span>
+            <span className="conv-label">Days of drinking water for your family</span>
+          </div>
+          <div className="conversion-item">
+            <span className="conv-icon">🌊</span>
+            <span className="conv-value">{pondFills}</span>
+            <span className="conv-label">Times you can fill your farm pond</span>
+          </div>
+          <div className="conversion-item">
+            <span className="conv-icon">🌾</span>
+            <span className="conv-value">{extraAcres}</span>
+            <span className="conv-label">Extra acres you can irrigate next season</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="lifetime-tracker">
+        <div className="lifetime-total">
+          <span>🏆 Your Lifetime Savings:</span>
+          <strong>{lifetimeSavings.toLocaleString('en-IN')} Liters</strong>
+        </div>
+        <button className="claim-btn" onClick={addToLifetime}>
+          ✅ Claim This Savings!
+        </button>
+      </div>
+
+      {/* Certificate Modal */}
+      {showCertificate && (
+        <div className="certificate-overlay" onClick={() => setShowCertificate(false)}>
+          <div className="certificate" onClick={e => e.stopPropagation()}>
+            <div className="cert-header">🎉 Water Savings Certificate 🎉</div>
+            <div className="cert-body">
+              <p>Congratulations!</p>
+              <p>By choosing <strong>{recommendedCrop.name}</strong> instead of Sugarcane:</p>
+              <div className="cert-stat">
+                <span className="cert-value">{litersSavedFormatted}</span>
+                <span>Liters Saved This Season</span>
+              </div>
+              <div className="cert-divider">🌿</div>
+              <div className="cert-stat lifetime">
+                <span className="cert-value">{lifetimeSavings.toLocaleString('en-IN')}</span>
+                <span>Total Lifetime Savings 💧</span>
+              </div>
+            </div>
+            <button className="cert-close" onClick={() => setShowCertificate(false)}>
+              🙏 Thank You!
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- WEATHER-SMART SOWING WINDOW (Phase 12) ---
+const SowingWindowCard = ({ crop, forecast }) => {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
+
+  // Calculate optimal sowing window from forecast
+  const calculateSowingWindow = () => {
+    if (!forecast || forecast.length < 5) return null;
+
+    // Find the best sowing window: light rain followed by dry period
+    let bestWindow = null;
+    let bestScore = 0;
+
+    for (let i = 0; i < forecast.length - 2; i++) {
+      const day = forecast[i];
+      const nextDays = forecast.slice(i + 1, i + 4);
+
+      // Score: prefer light rain (5-15mm) followed by dry days
+      let score = 0;
+      const rain = day.rain_mm || 0;
+
+      if (rain >= 5 && rain <= 15) score += 30; // Light pre-sowing rain
+      else if (rain > 0 && rain < 5) score += 15;
+
+      // Check for dry period after
+      const dryDays = nextDays.filter(d => (d.rain_mm || 0) < 3).length;
+      score += dryDays * 20;
+
+      // Prefer moderate temperatures (20-30°C)
+      const avgTemp = (day.temp_max + day.temp_min) / 2;
+      if (avgTemp >= 20 && avgTemp <= 30) score += 15;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestWindow = {
+          startDay: day.day || `Day ${i + 1}`,
+          startDate: new Date(Date.now() + i * 24 * 60 * 60 * 1000),
+          daysFromNow: i,
+          preRain: rain,
+          dryDays: dryDays,
+          score: score,
+          reasons: []
+        };
+
+        // Build reasons
+        if (rain >= 5 && rain <= 15) bestWindow.reasons.push(`Light rain (${rain}mm) for soil moisture`);
+        if (dryDays >= 2) bestWindow.reasons.push(`${dryDays} dry days following (good germination)`);
+        if (avgTemp >= 20 && avgTemp <= 30) bestWindow.reasons.push(`Optimal temperature (~${Math.round(avgTemp)}°C)`);
+      }
+    }
+
+    return bestWindow;
+  };
+
+  const sowingWindow = calculateSowingWindow();
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!sowingWindow) return;
+
+    const targetDate = sowingWindow.startDate;
+    const updateCountdown = () => {
+      const now = new Date();
+      const diff = targetDate - now;
+
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0 });
+        return;
+      }
+
+      setCountdown({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      });
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [sowingWindow]);
+
+  // Handle SMS subscription (mock)
+  const handleSmsSubscribe = () => {
+    if (phoneNumber.length >= 10) {
+      setSmsEnabled(true);
+      // In production, this would call a backend API
+      localStorage.setItem('smsAlertPhone', phoneNumber);
+    }
+  };
+
+  // Check for heavy rain alerts
+  const heavyRainAlert = forecast?.find(d => (d.rain_mm || 0) > 30);
+
+  // Post-sowing care tips
+  const careTips = [
+    { day: 7, tip: "Check seedling emergence. Thin if overcrowded.", icon: "🌱" },
+    { day: 14, tip: "First weeding. Apply light fertilizer if needed.", icon: "🌿" },
+    { day: 21, tip: "Check for pests. Ensure proper irrigation.", icon: "🔍" }
+  ];
+
+  if (!crop || !forecast) return null;
+
+  return (
+    <div className="sowing-window-card">
+      <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: '#2e7d32' }}>
+        🌱 Weather-Smart Sowing Window
+      </h3>
+
+      {/* Heavy Rain Alert Banner */}
+      {heavyRainAlert && (
+        <div className="rain-alert-banner">
+          ⚠️ Heavy Rain Alert: {heavyRainAlert.rain_mm}mm expected on {heavyRainAlert.day}
+          <span className="alert-action">Consider postponing irrigation</span>
+        </div>
+      )}
+
+      {/* Countdown Timer */}
+      {sowingWindow && (
+        <div className="sowing-countdown">
+          <div className="countdown-label">⏰ Optimal Sowing Window In:</div>
+          <div className="countdown-timer">
+            <div className="countdown-unit">
+              <span className="countdown-value">{countdown.days}</span>
+              <span className="countdown-text">Days</span>
+            </div>
+            <div className="countdown-separator">:</div>
+            <div className="countdown-unit">
+              <span className="countdown-value">{countdown.hours}</span>
+              <span className="countdown-text">Hours</span>
+            </div>
+            <div className="countdown-separator">:</div>
+            <div className="countdown-unit">
+              <span className="countdown-value">{countdown.minutes}</span>
+              <span className="countdown-text">Mins</span>
+            </div>
+          </div>
+          <div className="window-date">
+            Best Window: <strong>{sowingWindow.startDay}</strong> ({sowingWindow.daysFromNow === 0 ? 'Today!' : `${sowingWindow.daysFromNow} days from now`})
+          </div>
+        </div>
+      )}
+
+      {/* Sowing Reasons */}
+      {sowingWindow?.reasons.length > 0 && (
+        <div className="sowing-reasons">
+          <h4>📋 Why This Window?</h4>
+          <ul>
+            {sowingWindow.reasons.map((reason, idx) => (
+              <li key={idx}>✓ {reason}</li>
+            ))}
+          </ul>
+          <div className="prep-reminder">
+            🎒 <strong>Prep Now:</strong> Get seeds ready!
+          </div>
+        </div>
+      )}
+
+      {/* SMS Alert Subscription */}
+      <div className="sms-alert-section">
+        <h4>📲 Get SMS Alerts</h4>
+        {!smsEnabled ? (
+          <div className="sms-form">
+            <input
+              type="tel"
+              placeholder="Enter mobile number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              className="phone-input"
+            />
+            <button
+              className="sms-subscribe-btn"
+              onClick={handleSmsSubscribe}
+              disabled={phoneNumber.length < 10}
+            >
+              🔔 Subscribe
+            </button>
+          </div>
+        ) : (
+          <div className="sms-enabled">
+            ✅ Alerts enabled for <strong>+91 {phoneNumber}</strong>
+            <div className="alert-types">
+              <span className="alert-tag">3-day sowing reminder</span>
+              <span className="alert-tag">Post-sowing care (Day 7, 14, 21)</span>
+              <span className="alert-tag">Heavy rain warnings</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Post-Sowing Care Tips */}
+      <div className="care-tips-section">
+        <h4>📅 Post-Sowing Care Schedule</h4>
+        <div className="care-tips-grid">
+          {careTips.map((tip, idx) => (
+            <div key={idx} className="care-tip-item">
+              <div className="tip-day">
+                <span className="tip-icon">{tip.icon}</span>
+                <span>Day {tip.day}</span>
+              </div>
+              <div className="tip-text">{tip.tip}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [activeTab, setActiveTab] = useState('pincode');
   const [pincodeQuery, setPincodeQuery] = useState('');
+  const [session, setSession] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
+
+  useEffect(() => {
+    // Only set up auth if Supabase is configured
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) setShowAuth(false); // Close modal on login
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   const [nameQuery, setNameQuery] = useState('');
   const [latQuery, setLatQuery] = useState('');
   const [lngQuery, setLngQuery] = useState('');
@@ -430,7 +782,30 @@ function App() {
             <span className="badge">🎯 Smart Planning</span>
           </div>
         </div>
+        <div className="auth-header-actions">
+          {session ? (
+            <div className="user-profile">
+              <span className="user-email">👤 {session.user.email.split('@')[0]}</span>
+              <button className="auth-btn logout" onClick={() => supabase?.auth.signOut()}>
+                🚪 Sign Out
+              </button>
+            </div>
+          ) : (
+            <button className="auth-btn login" onClick={() => setShowAuth(true)} disabled={!supabase}>
+              🔐 Farmer Login
+            </button>
+          )}
+        </div>
       </header>
+
+      {showAuth && (
+        <div className="modal-overlay" onClick={() => setShowAuth(false)}>
+          <div className="modal-content auth-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowAuth(false)}>×</button>
+            <Auth />
+          </div>
+        </div>
+      )}
 
       <main className="main-content">
         <div className="search-section">
@@ -802,169 +1177,219 @@ function App() {
               </div>
             )}
 
+            {/* Phase 11: Water Savings Bank Account */}
+            {result?.recommendations?.[0] && (
+              <WaterSavingsCard
+                recommendedCrop={result.recommendations[0]}
+                landAcres={landAcres}
+              />
+            )}
+
+            {/* Phase 12: Weather-Smart Sowing Window */}
+            {result?.recommendations?.[0] && result?.forecast && (
+              <SowingWindowCard
+                crop={result.recommendations[0]}
+                forecast={result.forecast}
+              />
+            )}
+          </div>
+        )}
 
 
 
-            {/* --- WATER SIMULATION MODAL --- */}
-            {simulatingCrop && (
-              <div className="modal-overlay">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h3>📉 Water Risk: {simulatingCrop.name}</h3>
-                    <button className="close-btn" onClick={() => setSimulatingCrop(null)}>×</button>
-                  </div>
 
-                  <div className="chart-container">
-                    {simulationData ? (
-                      <ResponsiveContainer>
-                        <AreaChart data={activeSimData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
-                          <defs>
-                            {/* Gradient for the "Cone" shaded area */}
-                            <linearGradient id="coneGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#4caf50" stopOpacity={0.3} />
-                              <stop offset="50%" stopColor="#ffeb3b" stopOpacity={0.15} />
-                              <stop offset="100%" stopColor="#f44336" stopOpacity={0.3} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                          <YAxis
-                            label={{ value: 'Water Level (mm)', angle: -90, position: 'insideLeft', fontSize: 12 }}
-                            domain={[0, 'dataMax + 100']}
-                          />
-                          <Tooltip
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-                            formatter={(value, name) => [`${value} mm`, name]}
-                          />
+        {/* --- WATER SIMULATION MODAL --- */}
+        {simulatingCrop && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>📉 Water Risk: {simulatingCrop.name}</h3>
+                <button className="close-btn" onClick={() => setSimulatingCrop(null)}>×</button>
+              </div>
 
-                          {/* Critical Level Reference Line */}
-                          <ReferenceLine y={200} stroke="#d32f2f" strokeWidth={2} strokeDasharray="5 5">
-                            <label value="⚠️ CRITICAL LEVEL" fill="#d32f2f" position="top" fontSize={11} />
-                          </ReferenceLine>
+              <div className="chart-container">
+                {simulationData ? (
+                  <ResponsiveContainer>
+                    <AreaChart data={activeSimData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <defs>
+                        {/* Gradient for the "Cone" shaded area */}
+                        <linearGradient id="coneGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#4caf50" stopOpacity={0.3} />
+                          <stop offset="50%" stopColor="#ffeb3b" stopOpacity={0.15} />
+                          <stop offset="100%" stopColor="#f44336" stopOpacity={0.3} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis
+                        label={{ value: 'Water Level (mm)', angle: -90, position: 'insideLeft', fontSize: 12 }}
+                        domain={[0, 'dataMax + 100']}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                        formatter={(value, name) => [`${value} mm`, name]}
+                      />
 
-                          {/* Shaded Area: Best Case (Green - Top of Cone) */}
-                          <Area
-                            type="monotone"
-                            dataKey="best"
-                            stroke="#2e7d32"
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
-                            fill="url(#coneGradient)"
-                            fillOpacity={0.5}
-                            name="🟢 Best Case (Good Monsoon)"
-                          />
+                      {/* Critical Level Reference Line */}
+                      <ReferenceLine y={200} stroke="#d32f2f" strokeWidth={2} strokeDasharray="5 5">
+                        <label value="⚠️ CRITICAL LEVEL" fill="#d32f2f" position="top" fontSize={11} />
+                      </ReferenceLine>
 
-                          {/* Shaded Area: Worst Case (Red - Bottom of Cone) */}
-                          <Area
-                            type="monotone"
-                            dataKey="worst"
-                            stroke="#c62828"
-                            strokeWidth={2}
-                            strokeDasharray="8 4"
-                            fill="#fff"
-                            fillOpacity={1}
-                            name="🔴 Worst Case (Drought)"
-                          />
+                      {/* Shaded Area: Best Case (Green - Top of Cone) */}
+                      <Area
+                        type="monotone"
+                        dataKey="best"
+                        stroke="#2e7d32"
+                        strokeWidth={2}
+                        strokeDasharray="8 4"
+                        fill="url(#coneGradient)"
+                        fillOpacity={0.5}
+                        name="🟢 Best Case (Good Monsoon)"
+                      />
 
-                          {/* Likely Scenario: Solid Blue Line */}
-                          <Area
-                            type="monotone"
-                            dataKey="likely"
-                            stroke="#1565c0"
-                            strokeWidth={4}
-                            fill="none"
-                            name="🔵 Most Likely (Median Rain)"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div style={{ textAlign: 'center', padding: '50px' }}>Running Simulation...</div>
-                    )}
-                  </div>
+                      {/* Shaded Area: Worst Case (Red - Bottom of Cone) */}
+                      <Area
+                        type="monotone"
+                        dataKey="worst"
+                        stroke="#c62828"
+                        strokeWidth={2}
+                        strokeDasharray="8 4"
+                        fill="#fff"
+                        fillOpacity={1}
+                        name="🔴 Worst Case (Drought)"
+                      />
 
-                  {/* Chart Legend */}
-                  <div className="chart-legend" style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '30px', height: '3px', background: '#2e7d32', display: 'inline-block', borderRadius: '2px' }}></span>
-                      <span style={{ fontSize: '0.85rem', color: '#2e7d32' }}>Best Case</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '30px', height: '4px', background: '#1565c0', display: 'inline-block', borderRadius: '2px' }}></span>
-                      <span style={{ fontSize: '0.85rem', color: '#1565c0', fontWeight: '600' }}>Likely</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '30px', height: '3px', background: '#c62828', display: 'inline-block', borderRadius: '2px' }}></span>
-                      <span style={{ fontSize: '0.85rem', color: '#c62828' }}>Worst Case</span>
-                    </div>
-                  </div>
+                      {/* Likely Scenario: Solid Blue Line */}
+                      <Area
+                        type="monotone"
+                        dataKey="likely"
+                        stroke="#1565c0"
+                        strokeWidth={4}
+                        fill="none"
+                        name="🔵 Most Likely (Median Rain)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '50px' }}>Running Simulation...</div>
+                )}
+              </div>
 
-                  {/* Phase 10: Dynamic Interventions (Survival Mode) */}
-                  <div className="intervention-panel">
-                    <button
-                      className={`toggle-btn ${interventions.drip ? 'active' : ''}`}
-                      onClick={() => toggleIntervention('drip')}
-                    >
-                      💧 Drip Irrigation (₹20k)
-                    </button>
-                    <button
-                      className={`toggle-btn ${interventions.mulch ? 'active' : ''}`}
-                      onClick={() => toggleIntervention('mulch')}
-                    >
-                      🍂 Mulching (₹5k)
-                    </button>
-                  </div>
-
-                  {/* ROI Calculator Card */}
-                  {(interventions.drip || interventions.mulch) && (
-                    <div className="roi-card">
-                      <div className="roi-stat">
-                        <label>Investment</label>
-                        <div className="val negative">-₹{calculateROI().cost.toLocaleString()}</div>
-                      </div>
-                      <div className="roi-stat">
-                        <label>Water Saved</label>
-                        <div className="val positive">{(calculateROI().savings * 100).toFixed(0)}%</div>
-                      </div>
-                      <div className="roi-stat">
-                        <label>Projected Profit</label>
-                        <div className="val positive">₹{calculateROI().profit.toLocaleString()}</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Simulation Inputs Display */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', background: '#f5f5f5', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
-                    <div>💧 Starting Water: <strong>{result?.water_balance || 500}mm</strong></div>
-                    <div>🌱 Crop: <strong>{simulatingCrop?.name}</strong></div>
-                    <div>💦 Water Need: <strong>{simulatingCrop?.water_req}</strong></div>
-                  </div>              <div className="sim-note">
-                    {(() => {
-                      const typicalCrit = activeSimData?.find(d => d.likely < 200)?.month || "Safe";
-                      const earlyCrit = activeSimData?.find(d => d.worst < 200)?.month || "Safe";
-
-                      if (typicalCrit === "Safe" && earlyCrit === "Safe") {
-                        return <span><strong>✅ SAFE HARVEST:</strong> With your interventions, your crop is now safe even in drought conditions! Good job!</span>;
-                      }
-
-                      return (
-                        <span>
-                          With current interventions, you reach critical levels in <strong>{typicalCrit}</strong>.
-                          Worst case: <strong>{earlyCrit}</strong>.
-                        </span>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Phase 6: Crop Swap Impact Visualizer */}
-                  <CropSwapCard recommendedCrop={simulatingCrop} allRecommendations={result?.recommendations} />
+              {/* Chart Legend */}
+              <div className="chart-legend" style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap', marginTop: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '30px', height: '3px', background: '#2e7d32', display: 'inline-block', borderRadius: '2px' }}></span>
+                  <span style={{ fontSize: '0.85rem', color: '#2e7d32' }}>Best Case</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '30px', height: '4px', background: '#1565c0', display: 'inline-block', borderRadius: '2px' }}></span>
+                  <span style={{ fontSize: '0.85rem', color: '#1565c0', fontWeight: '600' }}>Likely</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '30px', height: '3px', background: '#c62828', display: 'inline-block', borderRadius: '2px' }}></span>
+                  <span style={{ fontSize: '0.85rem', color: '#c62828' }}>Worst Case</span>
                 </div>
               </div>
-            )}
-              )}
+
+              {/* Phase 10: Dynamic Interventions (Survival Mode) */}
+              <div className="intervention-panel">
+                <button
+                  className={`toggle-btn ${interventions.drip ? 'active' : ''}`}
+                  onClick={() => toggleIntervention('drip')}
+                >
+                  💧 Drip Irrigation (₹20k)
+                </button>
+                <button
+                  className={`toggle-btn ${interventions.mulch ? 'active' : ''}`}
+                  onClick={() => toggleIntervention('mulch')}
+                >
+                  🍂 Mulching (₹5k)
+                </button>
+              </div>
+
+              {/* ROI Calculator Card - Always Show Before/After */}
+              <div className="roi-card">
+                <h4 style={{ textAlign: 'center', marginBottom: '1rem', color: '#1565c0' }}>💰 Profit Calculator</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem' }}>
+                  {/* BEFORE (No Interventions) */}
+                  <div className="roi-column before">
+                    <div className="roi-label">❌ Without Interventions</div>
+                    <div className="roi-stat">
+                      <label>Investment</label>
+                      <div className="val">₹0</div>
+                    </div>
+                    <div className="roi-stat">
+                      <label>Water Saved</label>
+                      <div className="val">0%</div>
+                    </div>
+                    <div className="roi-stat">
+                      <label>Projected Profit</label>
+                      <div className="val">₹80,000</div>
+                    </div>
+                    <div className="roi-stat risk">
+                      <label>⚠️ Risk Level</label>
+                      <div className="val negative">HIGH</div>
+                    </div>
+                  </div>
+
+                  {/* AFTER (With Interventions) */}
+                  <div className={`roi-column after ${(interventions.drip || interventions.mulch) ? 'active' : 'dimmed'}`}>
+                    <div className="roi-label">✅ With Interventions</div>
+                    <div className="roi-stat">
+                      <label>Investment</label>
+                      <div className="val negative">-₹{calculateROI().cost.toLocaleString()}</div>
+                    </div>
+                    <div className="roi-stat">
+                      <label>Water Saved</label>
+                      <div className="val positive">{(calculateROI().savings * 100).toFixed(0)}%</div>
+                    </div>
+                    <div className="roi-stat">
+                      <label>Projected Profit</label>
+                      <div className="val positive">₹{calculateROI().profit.toLocaleString()}</div>
+                    </div>
+                    <div className="roi-stat risk">
+                      <label>🛡️ Risk Level</label>
+                      <div className="val positive">{(interventions.drip || interventions.mulch) ? 'LOW' : '-'}</div>
+                    </div>
+                  </div>
+                </div>
+                {!(interventions.drip || interventions.mulch) && (
+                  <div style={{ textAlign: 'center', marginTop: '1rem', color: '#666', fontSize: '0.85rem' }}>
+                    👆 Toggle interventions above to see the impact!
+                  </div>
+                )}
+              </div>
+
+              {/* Simulation Inputs Display */}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', background: '#f5f5f5', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                <div>💧 Starting Water: <strong>{result?.water_balance || 500}mm</strong></div>
+                <div>🌱 Crop: <strong>{simulatingCrop?.name}</strong></div>
+                <div>💦 Water Need: <strong>{simulatingCrop?.water_req}</strong></div>
+              </div>              <div className="sim-note">
+                {(() => {
+                  const typicalCrit = activeSimData?.find(d => d.likely < 200)?.month || "Safe";
+                  const earlyCrit = activeSimData?.find(d => d.worst < 200)?.month || "Safe";
+
+                  if (typicalCrit === "Safe" && earlyCrit === "Safe") {
+                    return <span><strong>✅ SAFE HARVEST:</strong> With your interventions, your crop is now safe even in drought conditions! Good job!</span>;
+                  }
+
+                  return (
+                    <span>
+                      With current interventions, you reach critical levels in <strong>{typicalCrit}</strong>.
+                      Worst case: <strong>{earlyCrit}</strong>.
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Phase 6: Crop Swap Impact Visualizer */}
+              <CropSwapCard recommendedCrop={simulatingCrop} allRecommendations={result?.recommendations} />
+            </div>
           </div>
         )}
       </main>
-    </div >
+    </div>
   )
 }
 

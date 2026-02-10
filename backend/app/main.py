@@ -13,6 +13,7 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "*", # Allow all origins for simpler deployment (or restrict in production)
 ]
 
 app.add_middleware(
