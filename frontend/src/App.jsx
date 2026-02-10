@@ -536,7 +536,7 @@ function App() {
     loadData();
   }, []);
 
-  // Auto-load saved location from database when user logs in
+  // Auto-load saved location: DB for logged-in users, localStorage for guests
   useEffect(() => {
     if (session) {
       getUserLocation().then(({ success, data }) => {
@@ -549,9 +549,18 @@ function App() {
         }
       });
     } else {
-      // Clear inputs when logged out
-      setLatQuery('');
-      setLngQuery('');
+      // Load from localStorage for guest users
+      try {
+        const saved = localStorage.getItem('water_accountant_location');
+        if (saved) {
+          const loc = JSON.parse(saved);
+          if (loc.lat) setLatQuery(loc.lat);
+          if (loc.lng) setLngQuery(loc.lng);
+          if (loc.pincode) setPincodeQuery(loc.pincode);
+          if (loc.region) setNameQuery(loc.region);
+          console.log("Auto-loaded location from localStorage:", loc);
+        }
+      } catch (e) { console.error("Error loading saved location", e); }
     }
   }, [session]);
 
@@ -755,9 +764,17 @@ function App() {
               } else {
                 console.warn("⚠️ Could not save location:", saveResult.error);
               }
-            } else {
-              console.log("ℹ️ Login to save location to your account");
             }
+            // Always save to localStorage as fallback
+            try {
+              localStorage.setItem('water_accountant_location', JSON.stringify({
+                lat: latitude,
+                lng: longitude,
+                region: data.data.region,
+                pincode: data.data.pincode
+              }));
+              console.log("📍 Location saved to localStorage");
+            } catch (e) { console.error("localStorage save error", e); }
           }
         } catch (err) {
           console.error("Backend error with coordinates:", err);
@@ -847,12 +864,12 @@ function App() {
       <main className="main-content">
         <div className="search-section">
           {/* Configuration Panel (Soil & Seed - Requested "Before Location") */}
-          <div className="filter-card" style={{ width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '5px' }}>⚙️ Step 1: Configure Soil & Crop</h3>
+          <div className="filter-card filter-card-main">
+            <h3 className="filter-card-title">⚙️ Step 1: Configure Soil & Crop</h3>
 
-            <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+            <div className="filter-inputs-row">
               {/* 1. Soil Selector - HYBRID INPUT */}
-              <div style={{ flex: '1 1 200px', position: 'relative' }}>
+              <div className="filter-input-item" style={{ position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Soil Type:
                 </label>
@@ -916,7 +933,7 @@ function App() {
               </div>
 
               {/* 2. Crop Selector - HYBRID INPUT */}
-              <div style={{ flex: '1 1 200px', position: 'relative' }}>
+              <div className="filter-input-item" style={{ position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Target Crop:
                 </label>
@@ -979,7 +996,7 @@ function App() {
               </div>
 
               {/* 3. Land Area Input */}
-              <div style={{ flex: '1 1 150px' }}>
+              <div className="filter-input-item filter-input-small">
                 <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
                   🌾 Land Area (Acres):
                 </label>
@@ -1091,7 +1108,7 @@ function App() {
           <button className="location-btn" onClick={handleLocation} disabled={loading}>
             📍 Use GPS Location
           </button>
-          {session && latQuery && lngQuery ? (
+          {latQuery && lngQuery ? (
             <div style={{
               marginTop: '0.5rem',
               fontSize: '0.85rem',
@@ -1099,17 +1116,21 @@ function App() {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexWrap: 'wrap'
             }}>
-              <span>✅ Location saved to account</span>
+              <span>✅ Location detected ({typeof latQuery === 'number' ? latQuery.toFixed(2) : latQuery}°, {typeof lngQuery === 'number' ? lngQuery.toFixed(2) : lngQuery}°)</span>
               <button
                 onClick={async () => {
-                  const result = await clearUserLocation();
-                  if (result.success) {
-                    setLatQuery('');
-                    setLngQuery('');
-                    console.log("Location cleared from database");
+                  if (session) {
+                    await clearUserLocation();
                   }
+                  localStorage.removeItem('water_accountant_location');
+                  setLatQuery('');
+                  setLngQuery('');
+                  setPincodeQuery('');
+                  setNameQuery('');
+                  console.log("Location cleared");
                 }}
                 style={{
                   background: 'none',
@@ -1118,26 +1139,21 @@ function App() {
                   cursor: 'pointer',
                   textDecoration: 'underline',
                   fontSize: '0.8rem',
-                  padding: '0'
+                  padding: '0',
+                  boxShadow: 'none'
                 }}
               >
                 Clear
               </button>
-            </div>
-          ) : !session ? (
-            <div style={{
-              marginTop: '0.5rem',
-              fontSize: '0.8rem',
-              color: '#f57c00',
-              textAlign: 'center'
-            }}>
-              ℹ️ Login to save location to your account
+              {!session && (
+                <span style={{ fontSize: '0.75rem', color: '#888' }}>(Login to sync across devices)</span>
+              )}
             </div>
           ) : null}
         </div>
 
         {/* Global Action Button (Requested at Bottom) */}
-        <div style={{ maxWidth: '800px', margin: '20px auto' }}>
+        <div className="action-button-wrapper">
           <button
             onClick={result ? handleManualCheck : () => setError("Please SEARCH for a Location above (Step 2) before checking.")}
             disabled={!selectedCrop}
@@ -1469,7 +1485,7 @@ function App() {
               {/* ROI Calculator Card - Always Show Before/After */}
               <div className="roi-card">
                 <h4 style={{ textAlign: 'center', marginBottom: '1rem', color: '#1565c0' }}>💰 Profit Calculator</h4>
-                <div style={{ display: 'flex', justifyContent: 'space-around', gap: '1rem' }}>
+                <div className="roi-columns-row">
                   {/* BEFORE (No Interventions) */}
                   <div className="roi-column before">
                     <div className="roi-label">❌ Without Interventions</div>
@@ -1520,7 +1536,7 @@ function App() {
               </div>
 
               {/* Simulation Inputs Display */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', background: '#f5f5f5', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+              <div className="sim-inputs-display">
                 <div>💧 Starting Water: <strong>{result?.water_balance || 500}mm</strong></div>
                 <div>🌱 Crop: <strong>{simulatingCrop?.name}</strong></div>
                 <div>💦 Water Need: <strong>{simulatingCrop?.water_req}</strong></div>
