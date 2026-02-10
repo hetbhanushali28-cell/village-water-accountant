@@ -3,6 +3,7 @@ import { getWaterBalance, fetchSuggestions, checkCropViability, fetchCrops, fetc
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from './supabaseClient';
 import Auth from './Auth';
+import { saveUserLocation, getUserLocation, clearUserLocation } from './locationService';
 import './App.css'
 
 // --- CROP SWAP CARD COMPONENT (DYNAMIC) ---
@@ -481,7 +482,6 @@ function App() {
   const [cropSuggestions, setCropSuggestions] = useState([]);
 
 
-
   // --- INTERVENTION STATE & LOGIC (Moved here to avoid TDZ) ---
   const [interventions, setInterventions] = useState({
     drip: false,
@@ -535,6 +535,25 @@ function App() {
     }
     loadData();
   }, []);
+
+  // Auto-load saved location from database when user logs in
+  useEffect(() => {
+    if (session) {
+      getUserLocation().then(({ success, data }) => {
+        if (success && data) {
+          setLatQuery(data.latitude);
+          setLngQuery(data.longitude);
+          if (data.pincode) setPincodeQuery(data.pincode);
+          if (data.region) setNameQuery(data.region);
+          console.log("Auto-loaded saved location from database:", data);
+        }
+      });
+    } else {
+      // Clear inputs when logged out
+      setLatQuery('');
+      setLngQuery('');
+    }
+  }, [session]);
 
   // Fetch Soil Data automatically when result changes
   useEffect(() => {
@@ -631,7 +650,7 @@ function App() {
       );
       setSoilSuggestions(filtered);
     } else {
-      setSoilSuggestions(soilList); // Show all when cleared
+      setSoilSuggestions(soilList);
     }
   }
 
@@ -645,18 +664,18 @@ function App() {
       );
       setCropSuggestions(filtered);
     } else {
-      setCropSuggestions(cropList); // Show all when cleared
+      setCropSuggestions(cropList);
     }
   }
 
   const selectSoil = (soilName) => {
     setSoilType(soilName);
-    setSoilSuggestions([]); // Hide after selection
+    setSoilSuggestions([]);
   }
 
   const selectCrop = (cropName) => {
     setSelectedCrop(cropName);
-    setCropSuggestions([]); // Hide after selection
+    setCropSuggestions([]);
   }
 
   // --- Actions ---
@@ -712,6 +731,7 @@ function App() {
         console.log("Location access granted:", position.coords);
         try {
           const { latitude, longitude } = position.coords
+
           const data = await getWaterBalance(null, latitude, longitude, soilType)
           if (data.success) {
             setResult(data.data)
@@ -721,6 +741,23 @@ function App() {
             // Should also fill the lat/lng inputs with what we found
             setLatQuery(latitude);
             setLngQuery(longitude);
+
+            // Save location to database if user is logged in
+            if (session) {
+              const saveResult = await saveUserLocation(
+                latitude,
+                longitude,
+                data.data.region,
+                data.data.pincode
+              );
+              if (saveResult.success) {
+                console.log("✅ Location saved to your account");
+              } else {
+                console.warn("⚠️ Could not save location:", saveResult.error);
+              }
+            } else {
+              console.log("ℹ️ Login to save location to your account");
+            }
           }
         } catch (err) {
           console.error("Backend error with coordinates:", err);
@@ -814,23 +851,63 @@ function App() {
             <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '5px' }}>⚙️ Step 1: Configure Soil & Crop</h3>
 
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-              {/* 1. Soil Selector - SEARCHABLE INPUT */}
+              {/* 1. Soil Selector - HYBRID INPUT */}
               <div style={{ flex: '1 1 200px', position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Soil Type:
                 </label>
-                <input
-                  value={soilType}
-                  onChange={handleSoilInput}
-                  onFocus={() => setSoilSuggestions(soilList)}
-                  onBlur={() => setTimeout(() => setSoilSuggestions([]), 200)}
-                  placeholder="Click to see all soil types..."
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    value={soilType}
+                    onChange={handleSoilInput}
+                    onFocus={() => setSoilSuggestions(soilList)}
+                    // Slightly longer delay to allow click on suggestion
+                    onBlur={() => setTimeout(() => setSoilSuggestions([]), 200)}
+                    placeholder="Type or select soil..."
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '2px solid var(--gray-300)',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--gray-500)' }}>
+                    ▼
+                  </span>
+                </div>
                 {soilSuggestions.length > 0 && (
-                  <ul className="suggestions-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000 }}>
+                  <ul style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 1000,
+                    background: 'white',
+                    border: '1px solid var(--gray-300)',
+                    borderRadius: 'var(--radius-md)',
+                    marginTop: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    boxShadow: 'var(--shadow-lg)',
+                    listStyle: 'none',
+                    padding: '0'
+                  }}>
                     {soilSuggestions.map(s => (
-                      <li key={s.name} onMouseDown={(e) => { e.preventDefault(); selectSoil(s.name); }}>
+                      <li
+                        key={s.name}
+                        onMouseDown={(e) => { e.preventDefault(); selectSoil(s.name); }}
+                        style={{
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--gray-100)',
+                          fontSize: '0.9rem',
+                          color: 'var(--gray-800)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = 'var(--primary-green-50)'}
+                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                      >
                         {s.name}
                       </li>
                     ))}
@@ -838,24 +915,63 @@ function App() {
                 )}
               </div>
 
-              {/* 2. Crop Selector - SEARCHABLE INPUT */}
+              {/* 2. Crop Selector - HYBRID INPUT */}
               <div style={{ flex: '1 1 200px', position: 'relative' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '5px', fontWeight: '600', color: '#555' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Target Crop:
                 </label>
-                <input
-                  value={selectedCrop}
-                  onChange={handleCropInput}
-                  onFocus={() => setCropSuggestions(cropList)}
-                  onBlur={() => setTimeout(() => setCropSuggestions([]), 200)}
-                  placeholder="Click to see all crops..."
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ddd' }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    value={selectedCrop}
+                    onChange={handleCropInput}
+                    onFocus={() => setCropSuggestions(cropList)}
+                    onBlur={() => setTimeout(() => setCropSuggestions([]), 200)}
+                    placeholder="Type or select crop..."
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '2px solid var(--gray-300)',
+                      fontSize: '0.95rem'
+                    }}
+                  />
+                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--gray-500)' }}>
+                    ▼
+                  </span>
+                </div>
                 {cropSuggestions.length > 0 && (
-                  <ul className="suggestions-list" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000 }}>
+                  <ul style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 1000,
+                    background: 'white',
+                    border: '1px solid var(--gray-300)',
+                    borderRadius: 'var(--radius-md)',
+                    marginTop: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    boxShadow: 'var(--shadow-lg)',
+                    listStyle: 'none',
+                    padding: '0'
+                  }}>
                     {cropSuggestions.map(crop => (
-                      <li key={crop.name} onMouseDown={(e) => { e.preventDefault(); selectCrop(crop.name); }}>
-                        {crop.name} <span style={{ color: '#666', fontSize: '0.85em' }}>({crop.type})</span>
+                      <li
+                        key={crop.name}
+                        onMouseDown={(e) => { e.preventDefault(); selectCrop(crop.name); }}
+                        style={{
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid var(--gray-100)',
+                          fontSize: '0.9rem',
+                          color: 'var(--gray-800)',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.background = 'var(--primary-green-50)'}
+                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                      >
+                        {crop.name} <span style={{ color: 'var(--gray-500)', fontSize: '0.8em' }}>({crop.type})</span>
                       </li>
                     ))}
                   </ul>
@@ -975,6 +1091,49 @@ function App() {
           <button className="location-btn" onClick={handleLocation} disabled={loading}>
             📍 Use GPS Location
           </button>
+          {session && latQuery && lngQuery ? (
+            <div style={{
+              marginTop: '0.5rem',
+              fontSize: '0.85rem',
+              color: '#2e7d32',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              justifyContent: 'center'
+            }}>
+              <span>✅ Location saved to account</span>
+              <button
+                onClick={async () => {
+                  const result = await clearUserLocation();
+                  if (result.success) {
+                    setLatQuery('');
+                    setLngQuery('');
+                    console.log("Location cleared from database");
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#d32f2f',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontSize: '0.8rem',
+                  padding: '0'
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          ) : !session ? (
+            <div style={{
+              marginTop: '0.5rem',
+              fontSize: '0.8rem',
+              color: '#f57c00',
+              textAlign: 'center'
+            }}>
+              ℹ️ Login to save location to your account
+            </div>
+          ) : null}
         </div>
 
         {/* Global Action Button (Requested at Bottom) */}
