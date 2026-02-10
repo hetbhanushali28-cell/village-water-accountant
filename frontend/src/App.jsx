@@ -879,7 +879,7 @@ function App() {
                     onChange={handleSoilInput}
                     onFocus={() => setSoilSuggestions(soilList)}
                     // Slightly longer delay to allow click on suggestion
-                    onBlur={() => setTimeout(() => setSoilSuggestions([]), 200)}
+                    onBlur={() => setTimeout(() => setSoilSuggestions([]), 300)}
                     placeholder="Type or select soil..."
                     style={{
                       width: '100%',
@@ -914,6 +914,7 @@ function App() {
                       <li
                         key={s.name}
                         onMouseDown={(e) => { e.preventDefault(); selectSoil(s.name); }}
+                        onTouchStart={(e) => { e.preventDefault(); selectSoil(s.name); }}
                         style={{
                           padding: '10px 12px',
                           cursor: 'pointer',
@@ -942,7 +943,7 @@ function App() {
                     value={selectedCrop}
                     onChange={handleCropInput}
                     onFocus={() => setCropSuggestions(cropList)}
-                    onBlur={() => setTimeout(() => setCropSuggestions([]), 200)}
+                    onBlur={() => setTimeout(() => setCropSuggestions([]), 300)}
                     placeholder="Type or select crop..."
                     style={{
                       width: '100%',
@@ -977,6 +978,7 @@ function App() {
                       <li
                         key={crop.name}
                         onMouseDown={(e) => { e.preventDefault(); selectCrop(crop.name); }}
+                        onTouchStart={(e) => { e.preventDefault(); selectCrop(crop.name); }}
                         style={{
                           padding: '10px 12px',
                           cursor: 'pointer',
@@ -1036,7 +1038,7 @@ function App() {
                 placeholder="e.g., 411001"
                 value={pincodeQuery}
                 onChange={(e) => handleInputChange(e, 'pincode')}
-                onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+                onBlur={() => setTimeout(() => setSuggestions([]), 300)}
               />
               <button onClick={() => handleSearch('pincode')} disabled={loading}>
                 Search Pin
@@ -1045,7 +1047,7 @@ function App() {
             {activeSearch === 'pincode' && suggestions.length > 0 && (
               <ul className="suggestions-list">
                 {suggestions.map((s) => (
-                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}>
+                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }}>
                     {s.label}
                   </li>
                 ))}
@@ -1063,7 +1065,7 @@ function App() {
                 placeholder="e.g., Pune"
                 value={nameQuery}
                 onChange={(e) => handleInputChange(e, 'name')}
-                onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+                onBlur={() => setTimeout(() => setSuggestions([]), 300)}
               />
               <button onClick={() => handleSearch('name')} disabled={loading} className="secondary-btn">
                 Search Name
@@ -1072,7 +1074,7 @@ function App() {
             {activeSearch === 'name' && suggestions.length > 0 && (
               <ul className="suggestions-list">
                 {suggestions.map((s) => (
-                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}>
+                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }}>
                     {s.label}
                   </li>
                 ))}
