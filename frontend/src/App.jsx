@@ -869,7 +869,7 @@ function App() {
 
             <div className="filter-inputs-row">
               {/* 1. Soil Selector - HYBRID INPUT */}
-              <div className="filter-input-item" style={{ position: 'relative' }}>
+              <div className="filter-input-item dropdown-wrapper">
                 <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Soil Type:
                 </label>
@@ -881,50 +881,20 @@ function App() {
                     // Slightly longer delay to allow click on suggestion
                     onBlur={() => setTimeout(() => setSoilSuggestions([]), 300)}
                     placeholder="Type or select soil..."
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '2px solid var(--gray-300)',
-                      fontSize: '0.95rem'
-                    }}
+                    className="dropdown-input"
                   />
-                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--gray-500)' }}>
+                  <span className={`dropdown-chevron ${soilSuggestions.length > 0 ? 'open' : ''}`}>
                     ▼
                   </span>
                 </div>
                 {soilSuggestions.length > 0 && (
-                  <ul style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
-                    background: 'white',
-                    border: '1px solid var(--gray-300)',
-                    borderRadius: 'var(--radius-md)',
-                    marginTop: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    boxShadow: 'var(--shadow-lg)',
-                    listStyle: 'none',
-                    padding: '0'
-                  }}>
+                  <ul className="dropdown-list">
                     {soilSuggestions.map(s => (
                       <li
                         key={s.name}
                         onMouseDown={(e) => { e.preventDefault(); selectSoil(s.name); }}
                         onTouchStart={(e) => { e.preventDefault(); selectSoil(s.name); }}
-                        style={{
-                          padding: '10px 12px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid var(--gray-100)',
-                          fontSize: '0.9rem',
-                          color: 'var(--gray-800)',
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'var(--primary-green-50)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                        className={`dropdown-item ${s.name === soilType ? 'selected' : ''}`}
                       >
                         {s.name}
                       </li>
@@ -934,7 +904,7 @@ function App() {
               </div>
 
               {/* 2. Crop Selector - HYBRID INPUT */}
-              <div className="filter-input-item" style={{ position: 'relative' }}>
+              <div className="filter-input-item dropdown-wrapper">
                 <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '8px', fontWeight: '600', color: 'var(--gray-800)' }}>
                   Target Crop:
                 </label>
@@ -945,50 +915,20 @@ function App() {
                     onFocus={() => setCropSuggestions(cropList)}
                     onBlur={() => setTimeout(() => setCropSuggestions([]), 300)}
                     placeholder="Type or select crop..."
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: 'var(--radius-md)',
-                      border: '2px solid var(--gray-300)',
-                      fontSize: '0.95rem'
-                    }}
+                    className="dropdown-input"
                   />
-                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--gray-500)' }}>
+                  <span className={`dropdown-chevron ${cropSuggestions.length > 0 ? 'open' : ''}`}>
                     ▼
                   </span>
                 </div>
                 {cropSuggestions.length > 0 && (
-                  <ul style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    zIndex: 1000,
-                    background: 'white',
-                    border: '1px solid var(--gray-300)',
-                    borderRadius: 'var(--radius-md)',
-                    marginTop: '4px',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    boxShadow: 'var(--shadow-lg)',
-                    listStyle: 'none',
-                    padding: '0'
-                  }}>
+                  <ul className="dropdown-list">
                     {cropSuggestions.map(crop => (
                       <li
                         key={crop.name}
                         onMouseDown={(e) => { e.preventDefault(); selectCrop(crop.name); }}
                         onTouchStart={(e) => { e.preventDefault(); selectCrop(crop.name); }}
-                        style={{
-                          padding: '10px 12px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid var(--gray-100)',
-                          fontSize: '0.9rem',
-                          color: 'var(--gray-800)',
-                          transition: 'background 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'var(--primary-green-50)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                        className={`dropdown-item ${crop.name === selectedCrop ? 'selected' : ''}`}
                       >
                         {crop.name} <span style={{ color: 'var(--gray-500)', fontSize: '0.8em' }}>({crop.type})</span>
                       </li>
@@ -1045,9 +985,9 @@ function App() {
               </button>
             </div>
             {activeSearch === 'pincode' && suggestions.length > 0 && (
-              <ul className="suggestions-list">
+              <ul className="dropdown-list">
                 {suggestions.map((s) => (
-                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }}>
+                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }} className="dropdown-item">
                     {s.label}
                   </li>
                 ))}
@@ -1072,9 +1012,9 @@ function App() {
               </button>
             </div>
             {activeSearch === 'name' && suggestions.length > 0 && (
-              <ul className="suggestions-list">
+              <ul className="dropdown-list">
                 {suggestions.map((s) => (
-                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }}>
+                  <li key={s.value} onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }} onTouchStart={(e) => { e.preventDefault(); selectSuggestion(s); }} className="dropdown-item">
                     {s.label}
                   </li>
                 ))}
