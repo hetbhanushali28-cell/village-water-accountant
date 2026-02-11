@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getWaterBalance, fetchSuggestions, checkCropViability, fetchCrops, fetchSoils, fetchSoilConditions, fetchMarketPrices, simulateWaterDepletion } from './api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { supabase } from './supabaseClient';
 import Auth from './Auth';
 import { saveUserLocation, getUserLocation, clearUserLocation } from './locationService';
+import VoiceAssistant from './components/VoiceAssistant';
 import './App.css'
 
 // --- CROP SWAP CARD COMPONENT (DYNAMIC) ---
@@ -686,6 +687,55 @@ function App() {
     setSelectedCrop(cropName);
     setCropSuggestions([]);
   }
+
+  // --- Voice Command Handler ---
+  const handleVoiceCommand = (command) => {
+    console.log("Voice Command Received:", command);
+
+    // 1. Set Soil
+    if (command.soil) {
+      setSoilType(command.soil);
+    }
+
+    // 2. Set Crop
+    if (command.crop) {
+      // Find the crop object in cropList to match correct casing/name
+      const crop = cropList.find(c => c.name.toLowerCase().includes(command.crop.toLowerCase()) || command.crop.toLowerCase().includes(c.name.toLowerCase()));
+      if (crop) {
+        selectCrop(crop.name);
+      } else {
+        // Fallback: just set what we heard if no match (though selectCrop expects valid name for logic)
+        // Better: search suggestion logic
+        setCropSuggestions(cropList);
+      }
+    }
+
+    // 3. Set Location
+    if (command.location) {
+      // Decide if it looks like a pincode or name
+      if (/^\d{6}$/.test(command.location)) {
+        setActiveSearch('pincode');
+        setPincodeQuery(command.location);
+        // We set state, user can click search. 
+        // Or we can try to trigger it: handleSearch('pincode') but state might be stale.
+      } else {
+        setActiveSearch('name');
+        setNameQuery(command.location);
+      }
+    }
+
+    // 4. Actions
+    if (command.action === 'reset') {
+      window.location.reload(); // Simple reset
+    } else if (command.action === 'calculate') {
+      if (result) {
+        document.querySelector('.result-card')?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        // Scroll to search button
+        document.querySelector('.search-section')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   // --- Actions ---
   const handleSearch = async (type) => {
@@ -1506,6 +1556,7 @@ function App() {
           </div>
         )}
       </main>
+      <VoiceAssistant onCommand={handleVoiceCommand} />
     </div>
   )
 }
